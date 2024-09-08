@@ -13,7 +13,7 @@ const CreateRoom = ({ navigation }: any) => {
 
     try {
       const response = await createRoom(username);
-      navigation.navigate('Room', response);
+      navigation.navigate('Room', {...response, currentUserName: username});
     } catch (error) {
       Alert.alert('Error', error.message);
     }

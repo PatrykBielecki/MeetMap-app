@@ -35,7 +35,7 @@ export const deleteUserById = async (userId: string) => {
     }
 };
 
-export const updateUserLocation = async (userId: string, longitude: number, latitude: number) => {
+export const updateUserLocation = async (userId: number, longitude: number, latitude: number) => {
     try {
         const response = await axios.patch(`/users/${userId}/location`, { longitude, latitude });
         return response.data;

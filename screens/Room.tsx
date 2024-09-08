@@ -3,33 +3,34 @@ import { View, Text, Alert, Dimensions, ScrollView, TouchableOpacity } from 'rea
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { getRoom } from '../requests/roomRequests';
+import { updateUserLocation } from '../requests/userRequests'; // Import updateUserLocation API call
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const { width, height } = Dimensions.get('window');
+const UPDATE_FREQUENCY = 20000; // 20 seconds
 
 interface RoomProps {
     route: {
         params: {
             id: number;
             roomId: string;
+            currentUserName: string;
         };
     };
 }
 
 const Room: React.FC<RoomProps> = ({ route }) => {
-    const { id } = route.params;
-    const { roomId } = route.params;
+    const { id, roomId, currentUserName } = route.params;
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [users, setUsers] = useState<string[]>([]);
+    const [users, setUsers] = useState<{ id: number; username: string }[]>([]);
     const [timer, setTimer] = useState<number>(300);
 
     useEffect(() => {
         const fetchRoomData = async () => {
             try {
                 const room = await getRoom(id.toString());
-                setUsers(room.users.map((user: { username: string }) => user.username));
+                setUsers(room.users);
             } catch (error) {
                 console.error('Failed to fetch room data:', error);
                 Alert.alert('Error', 'Failed to fetch room data');
@@ -57,6 +58,28 @@ const Room: React.FC<RoomProps> = ({ route }) => {
         return () => clearInterval(interval);
     }, [id]);
 
+    useEffect(() => {
+        const sendLocationUpdate = async () => {
+            const currentUser = users.find(user => user.username === currentUserName);
+
+            if (location && currentUser) {
+                try {
+                    let location = await Location.getCurrentPositionAsync({});
+                    setLocation(location);
+                    await updateUserLocation(currentUser.id, location.coords.longitude, location.coords.latitude);
+                } catch (error) {
+                    console.error('Failed to update location:', error);
+                }
+            }
+        };
+
+        const locationUpdateInterval = setInterval(() => {
+            sendLocationUpdate();
+        }, UPDATE_FREQUENCY); // Update every 20 seconds
+
+        return () => clearInterval(locationUpdateInterval); // Clear interval on component unmount
+    }, [location, users]);
+
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
     }
@@ -68,7 +91,7 @@ const Room: React.FC<RoomProps> = ({ route }) => {
     };
 
     const handleRefreshTimer = () => {
-        setTimer(300);
+        setTimer(300); // Reset timer to 5 minutes
     };
 
     return (
@@ -93,24 +116,38 @@ const Room: React.FC<RoomProps> = ({ route }) => {
                     />
                 )}
             </MapView>
+
+            {/* Current User Section */}
+            <View className='p-4'>
+                {users.length > 0 && users.find(user => user.username === currentUserName) ? (
+                    <View className='flex-row items-center mb-2'>
+                        <Ionicons name='person-circle' size={20} color='blue' />
+                        <Text className='text-base ml-2 font-bold'>You: {currentUserName}</Text>
+                    </View>
+                ) : (
+                    <Text className='text-base text-center'>You are not in this room.</Text>
+                )}
+            </View>
+
             <ScrollView className='ml-2'>
                 {users.length > 0 ? (
-                    users.map((user, index) => (
-                        <View key={index} className='flex-row items-center mb-2'>
-                            <Ionicons name='location' size={20} color='black' />
-                            <Text className='text-base ml-2'>{user}</Text>
-                        </View>
-                    ))
+                    users
+                        .filter(user => user.username !== currentUserName) // Exclude current user from the list
+                        .map((user, index) => (
+                            <View key={index} className='flex-row items-center mb-2'>
+                                <Ionicons name='location' size={20} color='black' />
+                                <Text className='text-base ml-2'>{user.username}</Text>
+                            </View>
+                        ))
                 ) : (
                     <Text className='text-base text-center'>No users in this room.</Text>
                 )}
             </ScrollView>
+
             <View className='absolute bottom-0 w-full flex-row justify-between items-center p-1 bg-black bg-opacity-50'>
                 <Text className='text-white text-lg font-bold ml-4'>Room ID: {roomId}</Text>
                 <View className='flex-row items-center mr-6'>
-                    {/* Display the Timer */}
                     <Text className='text-white text-lg mr-3'>{formatTime(timer)}</Text>
-                    {/* Refresh Button */}
                     <TouchableOpacity onPress={handleRefreshTimer}>
                         <Ionicons name='refresh' size={24} color='white' />
                     </TouchableOpacity>

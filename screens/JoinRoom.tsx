@@ -14,7 +14,7 @@ const JoinRoom = ({ navigation }: any) => {
 
         try {
             const response = await joinRoom(roomId, username);
-            navigation.navigate('Room', response);
+            navigation.navigate('Room', {...response, currentUserName: username});
         } catch (error) {
             Alert.alert('Error', error.message);
         }
