@@ -1,0 +1,20 @@
+{
+    "expo": {
+      "name": "MeetMap",
+      "slug": "meet-map",
+      "version": "1.0.0",
+      "sdkVersion": "51.0.0",
+      "platforms": ["ios", "android", "web"],
+      "permissions": [
+        "CAMERA",
+        "LOCATION",
+        "NOTIFICATIONS"
+      ],
+      "ios": {
+        "infoPlist": {
+          "NSLocationWhenInUseUsageDescription": "We need your location to provide better service."
+        }
+      }
+    }
+  }
+  

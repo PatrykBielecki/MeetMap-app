@@ -1,0 +1,43 @@
+node_modules/**/*
+.expo/*
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+web-report/
+yarn-error.log
+
+# macOS
+.DS_Store
+
+.idea/
+
+# User-specific stuff:
+.idea/workspace.xml
+_active.uusver
+.idea
+.expo/
+.expo-shared/
+
+# yarn internal state
+.yarn/*
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# prebuilt android and ios binaries (`npx expo prebuild`)
+android/
+ios/
+
+# local env, e.g. for providing URL to self-hosted API
+.env.development.local
+
+# expo updates cache folder
+dist/
