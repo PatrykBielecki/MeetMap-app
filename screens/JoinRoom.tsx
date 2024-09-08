@@ -7,6 +7,11 @@ const JoinRoom = ({ navigation }: any) => {
     const [roomId, setRoomId] = useState('');
 
     const handleSubmit = async () => {
+        if (!username.trim() || !roomId.trim()) {
+            Alert.alert('Error', 'Both username and room ID are required.');
+            return;
+        }
+
         try {
             const response = await joinRoom(roomId, username);
             navigation.navigate('Room', response);

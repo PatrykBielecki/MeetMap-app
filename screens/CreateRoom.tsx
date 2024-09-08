@@ -6,6 +6,11 @@ const CreateRoom = ({ navigation }: any) => {
   const [username, setUsername] = useState('');
 
   const handleCreateRoom = async () => {
+    if (!username.trim()) {
+      Alert.alert('Error', 'Username is required.');
+      return;
+    }
+
     try {
       const response = await createRoom(username);
       navigation.navigate('Room', response);
