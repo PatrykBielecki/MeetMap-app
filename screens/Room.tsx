@@ -3,15 +3,16 @@ import { View, Text, Alert, Dimensions, ScrollView, TouchableOpacity } from 'rea
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { getRoom } from '../requests/roomRequests';
-import { updateUserLocation } from '../requests/userRequests'; // Import updateUserLocation API call
+import { refreshUserTimer, updateUserLocation } from '../requests/userRequests';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const UPDATE_FREQUENCY = 20000; // 20 seconds
+const GPS_UPDATE_FREQUENCY = 20000;
+const REFRESH_TIMER_TO = 270;
 
-// Expanded color array for user pins
 const COLORS = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'cyan', 'brown', 'lime', 'magenta', 'indigo', 'teal', 'violet', 'gold', 'silver', 'coral', 'navy'];
 
 interface RoomProps {
+    navigation,
     route: {
         params: {
             id: number;
@@ -26,24 +27,24 @@ interface User {
     username: string;
     latitude: number | null;
     longitude: number | null;
-    color?: string; // Color assigned to user
+    color?: string;
 }
 
-const Room: React.FC<RoomProps> = ({ route }) => {
+const Room: React.FC<RoomProps> = ({ route, navigation }) => {
     const { id, roomId, currentUserName } = route.params;
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [users, setUsers] = useState<User[]>([]);
-    const [timer, setTimer] = useState<number>(300);
+    const [timer, setTimer] = useState<number>(REFRESH_TIMER_TO);
+    const [currentUser, setCurrentUser] = useState<User>();
 
-    // Function to assign unique colors to users
     const assignUniqueColors = (userList: User[]): User[] => {
         const usedColors: Set<string> = new Set();
         return userList.map(user => {
             let availableColors = COLORS.filter(color => !usedColors.has(color));
             if (availableColors.length === 0) {
-                availableColors = COLORS; // Reuse colors if all are used
+                availableColors = COLORS;
             }
             const assignedColor = availableColors[Math.floor(Math.random() * availableColors.length)];
             usedColors.add(assignedColor);
@@ -55,11 +56,12 @@ const Room: React.FC<RoomProps> = ({ route }) => {
         const fetchRoomData = async () => {
             try {
                 const room = await getRoom(id.toString());
-                const coloredUsers = assignUniqueColors(room.users); // Assign unique colors to users
+                const coloredUsers = assignUniqueColors(room.users);
                 setUsers(coloredUsers);
             } catch (error) {
                 console.error('Failed to fetch room data:', error);
-                Alert.alert('Error', 'Failed to fetch room data');
+                Alert.alert('Room closed', 'Room closed, create new room!');
+                navigation.navigate('Homepage');
             }
         };
 
@@ -72,51 +74,54 @@ const Room: React.FC<RoomProps> = ({ route }) => {
                 }
 
                 let location = await Location.getCurrentPositionAsync({});
-                setLocation(location); // Set the current user's location
+                setLocation(location);
             } catch (error) {
                 console.error('Error getting location:', error);
                 setErrorMsg('Failed to get location.');
             }
         };
 
-        // Fetch room data and location on component mount
         fetchRoomData();
         getLocation();
 
-        // Set a countdown timer
         const interval = setInterval(() => {
             setTimer(prevTimer => (prevTimer > 0 ? prevTimer - 1 : 0));
         }, 1000);
 
-        return () => clearInterval(interval); // Clear interval on unmount
+        return () => clearInterval(interval);
     }, [id]);
 
     useEffect(() => {
         const sendLocationUpdate = async () => {
-            const currentUser = users.find(user => user.username === currentUserName);
-
+            setCurrentUser(users.find(user => user.username === currentUserName));
             if (location && currentUser) {
                 try {
                     let location = await Location.getCurrentPositionAsync({});
-                    setLocation(location); // Update location in state
+                    setLocation(location);
                     await updateUserLocation(currentUser.id, location.coords.longitude, location.coords.latitude);
                 } catch (error) {
                     console.error('Failed to update location:', error);
-                    Alert.alert('Error', 'Failed to update location');
+                    Alert.alert('Room closed', 'Room closed, create new room!');
+                    navigation.navigate('Homepage');
                 }
             }
         };
 
-        // Periodically send location updates every 20 seconds
         const locationUpdateInterval = setInterval(() => {
             sendLocationUpdate();
-        }, UPDATE_FREQUENCY);
+        }, GPS_UPDATE_FREQUENCY);
 
-        return () => clearInterval(locationUpdateInterval); // Clear interval on unmount
-    }, [location, users, currentUserName]); // Re-run effect when location or users change
+        return () => clearInterval(locationUpdateInterval);
+    }, [location, users, currentUserName]);
 
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
+    }
+
+    if (timer <= 0){
+        console.error('Room closed by timer');
+        Alert.alert('Room closed', 'Room closed, create new room!');
+        navigation.navigate('Homepage');
     }
 
     const formatTime = (time: number) => {
@@ -125,8 +130,15 @@ const Room: React.FC<RoomProps> = ({ route }) => {
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     };
 
-    const handleRefreshTimer = () => {
-        setTimer(300); // Reset timer to 5 minutes
+    const handleRefreshTimer = async () => {
+        setTimer(REFRESH_TIMER_TO);
+        try {
+            await refreshUserTimer(currentUser.id);
+        } catch (error) {
+            console.error('Failed to refresh timer: ', error);
+            Alert.alert('Room closed', 'Room closed, create new room!');
+            navigation.navigate('Homepage');
+        }
     };
 
     return (

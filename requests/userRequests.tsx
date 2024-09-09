@@ -44,7 +44,7 @@ export const updateUserLocation = async (userId: number, longitude: number, lati
     }
 };
 
-export const refreshUserTimer = async (userId: string) => {
+export const refreshUserTimer = async (userId: number) => {
     try {
         const response = await axios.post(`/users/${userId}/refresh`);
         return response.data;

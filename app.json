@@ -1,20 +1,32 @@
 {
-    "expo": {
-      "name": "MeetMap",
-      "slug": "meet-map",
-      "version": "1.0.0",
-      "sdkVersion": "51.0.0",
-      "platforms": ["ios", "android", "web"],
-      "permissions": [
-        "CAMERA",
-        "LOCATION",
-        "NOTIFICATIONS"
-      ],
-      "ios": {
-        "infoPlist": {
-          "NSLocationWhenInUseUsageDescription": "We need your location to provide better service."
-        }
+  "expo": {
+    "name": "MeetMap",
+    "slug": "meet-map",
+    "version": "1.0.0",
+    "sdkVersion": "51.0.0",
+    "backgroundColor": "#ffffff",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "permissions": [
+      "CAMERA",
+      "LOCATION",
+      "NOTIFICATIONS"
+    ],
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to provide better service."
       }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4cb200fd-5528-4433-9d1d-f3bcf44bbbc3"
+      }
+    },
+    "android": {
+      "package": "com.meetmap.MeetMap"
     }
   }
-  
+}
