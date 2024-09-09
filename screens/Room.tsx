@@ -5,12 +5,13 @@ import * as Location from 'expo-location';
 import { getRoom } from '../requests/roomRequests';
 import { updateUserLocation } from '../requests/userRequests'; // Import updateUserLocation API call
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation hook
 
 const UPDATE_FREQUENCY = 20000; // 20 seconds
 
+// Expanded color array for user pins
+const COLORS = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'cyan', 'brown', 'lime', 'magenta', 'indigo', 'teal', 'violet', 'gold', 'silver', 'coral', 'navy'];
+
 interface RoomProps {
-    navigation,
     route: {
         params: {
             id: number;
@@ -20,46 +21,75 @@ interface RoomProps {
     };
 }
 
-const Room: React.FC<RoomProps> = ({ route, navigation }) => {
+interface User {
+    id: number;
+    username: string;
+    latitude: number | null;
+    longitude: number | null;
+    color?: string; // Color assigned to user
+}
+
+const Room: React.FC<RoomProps> = ({ route }) => {
     const { id, roomId, currentUserName } = route.params;
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [users, setUsers] = useState<{ id: number; username: string }[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [timer, setTimer] = useState<number>(300);
+
+    // Function to assign unique colors to users
+    const assignUniqueColors = (userList: User[]): User[] => {
+        const usedColors: Set<string> = new Set();
+        return userList.map(user => {
+            let availableColors = COLORS.filter(color => !usedColors.has(color));
+            if (availableColors.length === 0) {
+                availableColors = COLORS; // Reuse colors if all are used
+            }
+            const assignedColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+            usedColors.add(assignedColor);
+            return { ...user, color: assignedColor };
+        });
+    };
 
     useEffect(() => {
         const fetchRoomData = async () => {
             try {
                 const room = await getRoom(id.toString());
-                setUsers(room.users);
+                const coloredUsers = assignUniqueColors(room.users); // Assign unique colors to users
+                setUsers(coloredUsers);
             } catch (error) {
                 console.error('Failed to fetch room data:', error);
-                Alert.alert('Room Closed', 'Room closed, join or create new room!');
-                navigation.navigate('Homepage'); // Navigate to Home if an error occurs
+                Alert.alert('Error', 'Failed to fetch room data');
             }
         };
 
         const getLocation = async () => {
-            let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') {
-                setErrorMsg('Permission to access location was denied');
-                return;
-            }
+            try {
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setErrorMsg('Permission to access location was denied');
+                    return;
+                }
 
-            let location = await Location.getCurrentPositionAsync({});
-            setLocation(location);
+                let location = await Location.getCurrentPositionAsync({});
+                setLocation(location); // Set the current user's location
+            } catch (error) {
+                console.error('Error getting location:', error);
+                setErrorMsg('Failed to get location.');
+            }
         };
 
+        // Fetch room data and location on component mount
         fetchRoomData();
         getLocation();
 
+        // Set a countdown timer
         const interval = setInterval(() => {
-            setTimer((prevTimer) => (prevTimer > 0 ? prevTimer - 1 : 0));
+            setTimer(prevTimer => (prevTimer > 0 ? prevTimer - 1 : 0));
         }, 1000);
 
-        return () => clearInterval(interval);
-    }, [id, navigation]);
+        return () => clearInterval(interval); // Clear interval on unmount
+    }, [id]);
 
     useEffect(() => {
         const sendLocationUpdate = async () => {
@@ -68,22 +98,22 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
             if (location && currentUser) {
                 try {
                     let location = await Location.getCurrentPositionAsync({});
-                    setLocation(location);
+                    setLocation(location); // Update location in state
                     await updateUserLocation(currentUser.id, location.coords.longitude, location.coords.latitude);
                 } catch (error) {
                     console.error('Failed to update location:', error);
-                    Alert.alert('Room Closed', 'Room closed, join or create new room!');
-                    navigation.navigate('Homepage'); // Go back to home screen on error
+                    Alert.alert('Error', 'Failed to update location');
                 }
             }
         };
 
+        // Periodically send location updates every 20 seconds
         const locationUpdateInterval = setInterval(() => {
             sendLocationUpdate();
-        }, UPDATE_FREQUENCY); // Update every 20 seconds
+        }, UPDATE_FREQUENCY);
 
-        return () => clearInterval(locationUpdateInterval); // Clear interval on component unmount
-    }, [location, users, currentUserName, navigation]);
+        return () => clearInterval(locationUpdateInterval); // Clear interval on unmount
+    }, [location, users, currentUserName]); // Re-run effect when location or users change
 
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
@@ -111,15 +141,23 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 }}
                 showsUserLocation={true}
                 showsMyLocationButton={true}>
-                {location && (
-                    <Marker
-                        coordinate={{
-                            latitude: location.coords.latitude,
-                            longitude: location.coords.longitude,
-                        }}
-                        title='You are here'
-                    />
-                )}
+                
+                {/* Display pins for other users */}
+                {users.map((user, index) => {
+                    if (user.latitude !== null && user.longitude !== null && user.username !== currentUserName) {
+                        return (
+                            <Marker
+                                key={index}
+                                coordinate={{
+                                    latitude: user.latitude,
+                                    longitude: user.longitude,
+                                }}
+                                pinColor={user.color} // Set pin color based on the user's assigned color
+                                title={user.username}
+                            />
+                        );
+                    }
+                })}
             </MapView>
 
             {/* Current User Section */}
@@ -140,7 +178,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                         .filter(user => user.username !== currentUserName) // Exclude current user from the list
                         .map((user, index) => (
                             <View key={index} className='flex-row items-center mb-2'>
-                                <Ionicons name='location' size={20} color='black' />
+                                <Ionicons name='location' size={20} color={user.color || 'black'} />
                                 <Text className='text-base ml-2'>{user.username}</Text>
                             </View>
                         ))
