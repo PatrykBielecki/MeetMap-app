@@ -131,6 +131,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
     };
 
     const handleRefreshTimer = async () => {
+        if (!currentUser.id) return;
         setTimer(REFRESH_TIMER_TO);
         try {
             await refreshUserTimer(currentUser.id);
@@ -199,13 +200,15 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 )}
             </ScrollView>
 
-            <View className='absolute bottom-0 w-full flex-row justify-between items-center p-1 bg-black bg-opacity-50'>
+            <View className='absolute bottom-0 w-full flex-row justify-between items-center p-1 bg-black bg-opacity-50 py-2'>
                 <Text className='text-white text-lg font-bold ml-4'>Room ID: {roomId}</Text>
                 <View className='flex-row items-center mr-6'>
-                    <Text className='text-white text-lg mr-3'>{formatTime(timer)}</Text>
-                    <TouchableOpacity onPress={handleRefreshTimer}>
-                        <Ionicons name='refresh' size={24} color='white' />
-                    </TouchableOpacity>
+                    <Text className='text-white text-lg mr-3 pr-2'>{formatTime(timer)}</Text>
+                    { timer <= REFRESH_TIMER_TO - 5 &&
+                        <TouchableOpacity onPress={handleRefreshTimer}>
+                            <Ionicons name='refresh' size={20} color='white' />
+                        </TouchableOpacity>
+                    }
                 </View>
             </View>
         </View>
