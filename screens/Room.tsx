@@ -5,10 +5,12 @@ import * as Location from 'expo-location';
 import { getRoom } from '../requests/roomRequests';
 import { updateUserLocation } from '../requests/userRequests'; // Import updateUserLocation API call
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native'; // Import useNavigation hook
 
 const UPDATE_FREQUENCY = 20000; // 20 seconds
 
 interface RoomProps {
+    navigation,
     route: {
         params: {
             id: number;
@@ -18,7 +20,7 @@ interface RoomProps {
     };
 }
 
-const Room: React.FC<RoomProps> = ({ route }) => {
+const Room: React.FC<RoomProps> = ({ route, navigation }) => {
     const { id, roomId, currentUserName } = route.params;
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -33,7 +35,8 @@ const Room: React.FC<RoomProps> = ({ route }) => {
                 setUsers(room.users);
             } catch (error) {
                 console.error('Failed to fetch room data:', error);
-                Alert.alert('Error', 'Failed to fetch room data');
+                Alert.alert('Room Closed', 'Room closed, join or create new room!');
+                navigation.navigate('Homepage'); // Navigate to Home if an error occurs
             }
         };
 
@@ -56,7 +59,7 @@ const Room: React.FC<RoomProps> = ({ route }) => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [id]);
+    }, [id, navigation]);
 
     useEffect(() => {
         const sendLocationUpdate = async () => {
@@ -69,6 +72,8 @@ const Room: React.FC<RoomProps> = ({ route }) => {
                     await updateUserLocation(currentUser.id, location.coords.longitude, location.coords.latitude);
                 } catch (error) {
                     console.error('Failed to update location:', error);
+                    Alert.alert('Room Closed', 'Room closed, join or create new room!');
+                    navigation.navigate('Homepage'); // Go back to home screen on error
                 }
             }
         };
@@ -78,7 +83,7 @@ const Room: React.FC<RoomProps> = ({ route }) => {
         }, UPDATE_FREQUENCY); // Update every 20 seconds
 
         return () => clearInterval(locationUpdateInterval); // Clear interval on component unmount
-    }, [location, users]);
+    }, [location, users, currentUserName, navigation]);
 
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
