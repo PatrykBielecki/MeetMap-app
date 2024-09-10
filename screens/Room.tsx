@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Alert, Dimensions, ScrollView, TouchableOpacity, Image } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -34,6 +34,8 @@ interface User {
 
 const Room: React.FC<RoomProps> = ({ route, navigation }) => {
     const { id, roomId, currentUserName } = route.params;
+
+    const mapViewRef = useRef<MapView>(null);
 
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -150,9 +152,21 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
         }
     };
 
+    const handleNavigateToUser = (user: User) => {
+        if (user.latitude !== null && user.longitude !== null && mapViewRef.current) {
+            mapViewRef.current.animateToRegion({
+                latitude: user.latitude,
+                longitude: user.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            }, 1000);
+        }
+    };
+
     return (
         <View className='flex-1'>
             <MapView
+                ref={mapViewRef}
                 className='w-full h-3/4'
                 initialRegion={{
                     latitude: location?.coords.latitude || 37.78825,
@@ -202,19 +216,21 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                     users
                         .filter(user => user.username !== currentUserName) 
                         .map((user, index) => (
-                            <View key={index} className='flex-row items-center mb-2'>
-                                <View style={{
-                                    width: 25,
-                                    height: 25,
-                                    borderRadius: 25,
-                                    backgroundColor: user.color || 'gray',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                }}>
-                                    <Image source={locationIcon} style={{ width: 20, height: 20}} />
+                            <TouchableOpacity key={index} onPress={() => handleNavigateToUser(user)}>
+                                <View className='flex-row items-center mb-2'>
+                                    <View style={{
+                                        width: 25,
+                                        height: 25,
+                                        borderRadius: 25,
+                                        backgroundColor: user.color || 'gray',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                    }}>
+                                        <Image source={locationIcon} style={{ width: 20, height: 20}} />
+                                    </View>
+                                    <Text className='text-base ml-2'>{user.username}</Text>
                                 </View>
-                                <Text className='text-base ml-2'>{user.username}</Text>
-                            </View>
+                            </TouchableOpacity>
                         ))
                 ) : (
                     <Text className='text-base text-center'>No users in this room.</Text>
