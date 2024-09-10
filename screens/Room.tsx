@@ -11,7 +11,7 @@ const refreshIcon = require('../assets/refresh.png');
 const GPS_UPDATE_FREQUENCY = 20000;
 const REFRESH_TIMER_TO = 270;
 
-const COLORS = ['red', 'green', 'purple', 'orange', 'yellow', 'pink', 'brown', 'lime', 'magenta', 'indigo', 'violet', 'gold', 'silver', 'coral', 'navy'];
+const COLORS = ['red', 'green', 'yellow', 'orange', 'pink', 'lime', 'magenta', 'brown', 'gold', 'coral', 'violet', 'black', 'white'];
 
 interface RoomProps {
     navigation,
