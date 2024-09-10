@@ -11,7 +11,7 @@ const refreshIcon = require('../assets/refresh.png');
 const GPS_UPDATE_FREQUENCY = 20000;
 const REFRESH_TIMER_TO = 270;
 
-const COLORS = ['red', 'blue', 'green', 'purple', 'orange', 'yellow', 'pink', 'cyan', 'brown', 'lime', 'magenta', 'indigo', 'teal', 'violet', 'gold', 'silver', 'coral', 'navy'];
+const COLORS = ['red', 'green', 'purple', 'orange', 'yellow', 'pink', 'brown', 'lime', 'magenta', 'indigo', 'violet', 'gold', 'silver', 'coral', 'navy'];
 
 interface RoomProps {
     navigation,
@@ -41,16 +41,15 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
     const [timer, setTimer] = useState<number>(REFRESH_TIMER_TO);
     const [currentUser, setCurrentUser] = useState<User>();
 
-    const assignUniqueColors = (userList: User[]): User[] => {
-        const usedColors: Set<string> = new Set();
+    const assignUniqueColors = (userList: User[], currentUserName: string): User[] => {
         return userList.map(user => {
-            let availableColors = COLORS.filter(color => !usedColors.has(color));
-            if (availableColors.length === 0) {
-                availableColors = COLORS;
+            if (user.username === currentUserName) {
+                return { ...user, color: 'blue' };
+            } else {
+                const colorIndex = user.id % COLORS.length;
+                const assignedColor = COLORS[colorIndex];
+                return { ...user, color: assignedColor };
             }
-            const assignedColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-            usedColors.add(assignedColor);
-            return { ...user, color: assignedColor };
         });
     };
 
@@ -58,7 +57,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
         const fetchRoomData = async () => {
             try {
                 const room = await getRoom(id.toString());
-                const coloredUsers = assignUniqueColors(room.users);
+                const coloredUsers = assignUniqueColors(room.users, currentUserName);
                 setUsers(coloredUsers);
     
                 const currentUser = coloredUsers.find(user => user.username === currentUserName);
@@ -98,13 +97,16 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
 
     useEffect(() => {
         if (!currentUser) return;
-
+    
         const sendLocationUpdate = async () => {
             if (location && currentUser) {
                 try {
                     let currentLocation = await Location.getCurrentPositionAsync({});
                     setLocation(currentLocation);
-                    await updateUserLocation(currentUser.id, currentLocation.coords.longitude, currentLocation.coords.latitude);
+                    const updatedRoom = await updateUserLocation(currentUser.id, currentLocation.coords.longitude, currentLocation.coords.latitude);
+    
+                    const coloredUsers = assignUniqueColors(updatedRoom.users, currentUserName);
+                    setUsers(coloredUsers);
                 } catch (error) {
                     console.error('Failed to update location:', error);
                     Alert.alert('Room closed', 'Room closed, create new room!');
@@ -112,13 +114,13 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 }
             }
         };
-
+    
         const locationUpdateInterval = setInterval(() => {
             sendLocationUpdate();
         }, GPS_UPDATE_FREQUENCY);
-
+    
         return () => clearInterval(locationUpdateInterval);
-    }, [location, currentUser]); 
+    }, [location, currentUser]);
 
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
@@ -161,7 +163,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 showsUserLocation={true}
                 showsMyLocationButton={true}>
                 {users.map((user, index) => {
-                    if (user.latitude !== null && user.longitude !== null && user.username !== currentUserName) {
+                    if (user.latitude !== null && user.longitude !== null) {
                         return (
                             <Marker
                                 key={index}
@@ -183,7 +185,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                                     width: 25,
                                     height: 25,
                                     borderRadius: 25,
-                                    backgroundColor: 'red',
+                                    backgroundColor: 'blue',
                                     justifyContent: 'center',
                                     alignItems: 'center',
                                 }}>
