@@ -5,9 +5,8 @@ import * as Location from 'expo-location';
 import { getRoom } from '../requests/roomRequests';
 import { refreshUserTimer, updateUserLocation } from '../requests/userRequests';
 
-// Import your PNG assets
-const locationIcon = require('../assets/pin.png');  // Replace with the actual path
-const refreshIcon = require('../assets/refresh.png');  // Replace with the actual path
+const locationIcon = require('../assets/pin.png');
+const refreshIcon = require('../assets/refresh.png');
 
 const GPS_UPDATE_FREQUENCY = 20000;
 const REFRESH_TIMER_TO = 270;
@@ -61,13 +60,16 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 const room = await getRoom(id.toString());
                 const coloredUsers = assignUniqueColors(room.users);
                 setUsers(coloredUsers);
+    
+                const currentUser = coloredUsers.find(user => user.username === currentUserName);
+                setCurrentUser(currentUser);
             } catch (error) {
                 console.error('Failed to fetch room data:', error);
                 Alert.alert('Room closed', 'Room closed, create new room!');
                 navigation.navigate('Homepage');
             }
         };
-
+    
         const getLocation = async () => {
             try {
                 let { status } = await Location.requestForegroundPermissionsAsync();
@@ -75,7 +77,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                     setErrorMsg('Permission to access location was denied');
                     return;
                 }
-
+    
                 let location = await Location.getCurrentPositionAsync({});
                 setLocation(location);
             } catch (error) {
@@ -83,25 +85,26 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
                 setErrorMsg('Failed to get location.');
             }
         };
-
+    
         fetchRoomData();
         getLocation();
-
+    
         const interval = setInterval(() => {
             setTimer(prevTimer => (prevTimer > 0 ? prevTimer - 1 : 0));
         }, 1000);
-
+    
         return () => clearInterval(interval);
-    }, [id]);
+    }, [id, currentUserName]);
 
     useEffect(() => {
+        if (!currentUser) return;
+
         const sendLocationUpdate = async () => {
-            setCurrentUser(users.find(user => user.username === currentUserName));
             if (location && currentUser) {
                 try {
-                    let location = await Location.getCurrentPositionAsync({});
-                    setLocation(location);
-                    await updateUserLocation(currentUser.id, location.coords.longitude, location.coords.latitude);
+                    let currentLocation = await Location.getCurrentPositionAsync({});
+                    setLocation(currentLocation);
+                    await updateUserLocation(currentUser.id, currentLocation.coords.longitude, currentLocation.coords.latitude);
                 } catch (error) {
                     console.error('Failed to update location:', error);
                     Alert.alert('Room closed', 'Room closed, create new room!');
@@ -115,7 +118,7 @@ const Room: React.FC<RoomProps> = ({ route, navigation }) => {
         }, GPS_UPDATE_FREQUENCY);
 
         return () => clearInterval(locationUpdateInterval);
-    }, [location, users, currentUserName]);
+    }, [location, currentUser]); 
 
     if (errorMsg) {
         Alert.alert('Error', errorMsg);
